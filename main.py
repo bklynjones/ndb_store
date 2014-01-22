@@ -28,31 +28,28 @@ class SensorRecord(ndb.Model) :
 	def query_record(cls, ancestor_key):
 		return cls.query(ancestor=ancestor_key).order(-cls.recordentrytime)
 
-d = Device(devicename = 'bluto')
-d_key = d.put()
-
-
-
-r = SensorRecord(parent = d_key,
-				devicename=d.devicename,
-				sensorreading = 3,
-				sensormin = 0,
-				sensormax = 10)
-r_key= r.put()
-
-
 class MainHandler(webapp2.RequestHandler):
     
     def get(self):
         self.response.headers['Content-Type'] = 'text/plain'
+        
+        get_values = self.request.GET
+        d = Device(devicename = self.request.GET['devicename'])
+        d_key = d.put()
+
+
+        r = SensorRecord(parent = d_key,
+        	devicename=d.devicename,
+        	sensorreading = int(self.request.GET['sensorreading']),
+        	sensormin = int(self.request.GET['sensormin']),
+        	sensormax = int(self.request.GET['sensormax']))
+        r_key= r.put()
+
         self.response.write(r_key.get())
-       # self.response.write(d.query_record)
-
-
-
-
-
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler)
 ], debug=True)
+
+
+ 
