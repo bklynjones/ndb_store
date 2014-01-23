@@ -15,3 +15,10 @@ indexes:
   properties:
   - name: recordentrytime
     direction: desc
+
+- kind: SensorRecord
+  ancestor: yes
+  properties:
+  - name: recordentrytime
+    direction: desc
+  - name: sensorreading

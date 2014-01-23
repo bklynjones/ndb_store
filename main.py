@@ -32,7 +32,6 @@ class CreateRecordHandler(webapp2.RequestHandler):
     	# populates datastore Model Objects with GET Params and creates Datastore Entity
         self.response.headers['Content-Type'] = 'text/plain'
 
-        #sensor_key = ndb.Key()
         device_name = self.request.GET['devicename']
 
 
@@ -42,10 +41,10 @@ class CreateRecordHandler(webapp2.RequestHandler):
         				sensormax = int(self.request.GET['sensormax']))
         r_key= r.put()
 
-        
 
-        record = r_key.parent()
-        self.response.write(record)
+
+        # record = r_key.parent()
+        # self.response.write(record)
 
 
 class ReadRecordsHandler(webapp2.RequestHandler):
@@ -54,11 +53,25 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 		self.response.headers['Content-Type'] = 'text/plain'
 		
 		device_name = self.request.GET['devicename']
+		#sensor_reading = self.request.GET['sensorreading']
+
 		device_records_query = SensorRecord.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
-		device_records = device_records_query.fetch()
+		# device_records is a list object only returns sensor reading and time for parsing. 
+		device_records = device_records_query.fetch( projection=[SensorRecord.sensorreading, SensorRecord.recordentrytime])
 
-		self.response.write(device_records)
+		#create methods for pulling different streams of data out for processing. 
+		for device_record in device_records:
+			self.response.write(device_record.sensorreading)
+
+		#self.response.write(device_records)
+
+		# for i in range(len(device_records)):
+			
+		# 	self.response.write(device_records[i])
+			
+
+
 
 
 
