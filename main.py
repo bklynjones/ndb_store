@@ -5,23 +5,17 @@ import webapp2
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
-DEFAULT_DEVICE = 'default_device'
+NO_DEVICE_NAMED = 'no_device_name'
 
-class Device(ndb.Model) :
-	devicename = ndb.StringProperty()
-	sensormin = ndb.IntegerProperty()
-	sensormax = ndb.IntegerProperty()
+def device_key(device_name = NO_DEVICE_NAMED):
+	"""constructs Datastore key for SensorRecord entity with device_name """
+	return ndb.Key('DeviceGroup', device_name)
 
-	
-
-def device_key(device_name = DEFAULT_DEVICE):
-	"""Constructs a  Datastore key for a SensorRecord Entity with Device name."""
-	return ndb.Key('ReadRecordsHandler', device_name)
 
 class SensorRecord(ndb.Model) :
 	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
-	key_name = ndb.StringProperty()
-	#devicename = ndb.StringProperty()
+	sensormin = ndb.IntegerProperty()
+	sensormax = ndb.IntegerProperty()
 	sensorreading = ndb.IntegerProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
@@ -37,18 +31,21 @@ class CreateRecordHandler(webapp2.RequestHandler):
     def get(self):
     	# populates datastore Model Objects with GET Params and creates Datastore Entity
         self.response.headers['Content-Type'] = 'text/plain'
-        
-        get_values = self.request.GET
-        d = Device(devicename = self.request.GET['devicename'],
-        	sensormin = int(self.request.GET['sensormin']),
-        	sensormax = int(self.request.GET['sensormax']))
-        d_key = d.put()
 
-        r = SensorRecord(parent = d_key,
-        	key_name=d.devicename,
-        	sensorreading = int(self.request.GET['sensorreading']))
+        #sensor_key = ndb.Key()
+        device_name = self.request.GET['devicename']
+
+
+        r = SensorRecord(parent = device_key(device_name),
+        				sensorreading = int(self.request.GET['sensorreading']),
+        				sensormin = int(self.request.GET['sensormin']),
+        				sensormax = int(self.request.GET['sensormax']))
         r_key= r.put()
-       
+
+        
+
+        record = r_key.parent()
+        self.response.write(record)
 
 
 class ReadRecordsHandler(webapp2.RequestHandler):
@@ -56,16 +53,13 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 	def get(self): 
 		self.response.headers['Content-Type'] = 'text/plain'
 		
-		qry = Device.query()
-		self.response.write(qry)
+		device_name = self.request.GET['devicename']
+		device_records_query = SensorRecord.query(
+			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
+		device_records = device_records_query.fetch()
 
-		qry1= qry.filter(SensorRecord.key_name == 'bluto')
-		self.response.write('.......................................')
-		self.response.write(qry1)
+		self.response.write(device_records)
 
-        #sensor_records_query = SensorRecord.query()
-        #sensor_records_results = sensor_records_query.fetch()
-        #self.response.write(sensor_records_results)
 
 
 app = webapp2.WSGIApplication([
