@@ -5,29 +5,27 @@ import webapp2
 from google.appengine.api import users
 from google.appengine.ext import ndb
 
+DEFAULT_DEVICE = 'default_device'
 
 class Device(ndb.Model) :
 	devicename = ndb.StringProperty()
 	sensormin = ndb.IntegerProperty()
 	sensormax = ndb.IntegerProperty()
 
-	@classmethod
-	def query_device(cls, ancestor_key):
-		return cls.query().order(-cls.recordentrytime)
+	
 
-
+def device_key(device_name = DEFAULT_DEVICE):
+	"""Constructs a  Datastore key for a SensorRecord Entity with Device name."""
+	return ndb.Key('ReadRecordsHandler', device_name)
 
 class SensorRecord(ndb.Model) :
-# Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
-	
+	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
 	key_name = ndb.StringProperty()
 	#devicename = ndb.StringProperty()
 	sensorreading = ndb.IntegerProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
-	@classmethod
-	def query_record(cls, ancestor_key):
-		return cls.query(ancestor=ancestor_key).order(-cls.recordentrytime)
+	
 
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
@@ -50,18 +48,29 @@ class CreateRecordHandler(webapp2.RequestHandler):
         	key_name=d.devicename,
         	sensorreading = int(self.request.GET['sensorreading']))
         r_key= r.put()
-        r = r_key.get
-        #self.response.write(r)
-        d = d_key.get()
-        self.response.write(d)
-        sensor_records_query = SensorRecord.query()
-        sensor_records_results = sensor_records_query.fetch()
-        self.response.write(sensor_records_results)
+       
+
+
+class ReadRecordsHandler(webapp2.RequestHandler):
+
+	def get(self): 
+		self.response.headers['Content-Type'] = 'text/plain'
+		
+		qry = Device.query()
+		self.response.write(qry)
+
+		qry1= qry.filter(SensorRecord.key_name == 'bluto')
+		self.response.write('.......................................')
+		self.response.write(qry1)
+
+        #sensor_records_query = SensorRecord.query()
+        #sensor_records_results = sensor_records_query.fetch()
+        #self.response.write(sensor_records_results)
+
 
 app = webapp2.WSGIApplication([
 	('/', MainHandler),
-    ('/write', CreateRecordHandler)
+	('/write', CreateRecordHandler),
+	('/read', ReadRecordsHandler)
 ], debug=True)
-
-
  
