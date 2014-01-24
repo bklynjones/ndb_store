@@ -19,13 +19,14 @@ class SensorRecord(ndb.Model) :
 	sensorreading = ndb.IntegerProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
+	#note: all class methods pass the instance of the class as it's first argument 
 	@classmethod
-	def sensorRecordQuery_by_device(cls,device_name):
+	def query_readings_by_device(cls,device_name):
 			device_readings_list = []
-			device_records_query = SensorRecord.query(
+			device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
-			device_records = device_records_query.fetch( projection=[SensorRecord.sensorreading, SensorRecord.recordentrytime])
+			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
 
 		#create methods for pulling different streams of data out for processing. 
 			for device_record in device_records:
@@ -59,15 +60,15 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 	def get(self): 
 		this = self
 		this.response.headers['Content-Type'] = 'text/plain'
-		#self.response.write(self.request.GET['devicename'])
+		
 		try:
 			device_name= self.request.GET['devicename']
 
-		except KeyError:
+		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
 			self.response.write(
-			SensorRecord.sensorRecordQuery_by_device(device_name))
+			SensorRecord.query_readings_by_device(device_name))
 
 
 app = webapp2.WSGIApplication([
