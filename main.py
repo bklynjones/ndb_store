@@ -19,7 +19,18 @@ class SensorRecord(ndb.Model) :
 	sensorreading = ndb.IntegerProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
-	
+	@classmethod
+	def sensorRecordQuery_by_device(cls,device_name):
+			device_readings_list = []
+			device_records_query = SensorRecord.query(
+			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
+			# device_records is a list object only returns sensor reading and time for parsing. 
+			device_records = device_records_query.fetch( projection=[SensorRecord.sensorreading, SensorRecord.recordentrytime])
+
+		#create methods for pulling different streams of data out for processing. 
+			for device_record in device_records:
+				device_readings_list.append(device_record.sensorreading)
+			return device_readings_list
 
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
@@ -43,36 +54,20 @@ class CreateRecordHandler(webapp2.RequestHandler):
 
 
 
-        # record = r_key.parent()
-        # self.response.write(record)
-
-
 class ReadRecordsHandler(webapp2.RequestHandler):
 
 	def get(self): 
-		self.response.headers['Content-Type'] = 'text/plain'
-		
-		device_name = self.request.GET['devicename']
-		#sensor_reading = self.request.GET['sensorreading']
+		this = self
+		this.response.headers['Content-Type'] = 'text/plain'
+		#self.response.write(self.request.GET['devicename'])
+		try:
+			device_name= self.request.GET['devicename']
 
-		device_records_query = SensorRecord.query(
-			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
-		# device_records is a list object only returns sensor reading and time for parsing. 
-		device_records = device_records_query.fetch( projection=[SensorRecord.sensorreading, SensorRecord.recordentrytime])
-
-		#create methods for pulling different streams of data out for processing. 
-		for device_record in device_records:
-			self.response.write(device_record.sensorreading)
-
-		#self.response.write(device_records)
-
-		# for i in range(len(device_records)):
-			
-		# 	self.response.write(device_records[i])
-			
-
-
-
+		except KeyError:
+			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
+		else:
+			self.response.write(
+			SensorRecord.sensorRecordQuery_by_device(device_name))
 
 
 app = webapp2.WSGIApplication([
