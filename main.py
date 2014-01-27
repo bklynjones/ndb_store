@@ -33,6 +33,23 @@ class SensorRecord(ndb.Model) :
 				device_readings_list.append(device_record.sensorreading)
 			return device_readings_list
 
+	@classmethod
+	def query_readings_by_device_with_timestamp(cls,device_name):
+			device_readings_dict = {}
+			device_records_query = cls.query(
+			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
+			
+			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
+
+			for device_record in device_records:
+				if not cls.sensorreading in device_readings_dict:
+					device_readings_dict[device_record.recordentrytime] = device_record.sensorreading
+				else:
+					device_readings_dict[device_record.recordentrytime].append(device_record.sensorreading)
+
+				
+			return device_readings_dict
+
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
 		self.response.headers['Content-Type'] = 'text/plain'
@@ -70,10 +87,29 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 			self.response.write(
 			SensorRecord.query_readings_by_device(device_name))
 
+class ReadRecordsHandlerWithTime(webapp2.RequestHandler):
+
+	def get(self): 
+		this = self
+		this.response.headers['Content-Type'] = 'text/plain'
+		
+		try:
+			device_name= self.request.GET['devicename']
+
+		except KeyError: #bail if there is no argument for 'devicename' submitted
+			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
+		else:
+			self.response.write(
+			SensorRecord.query_readings_by_device_with_timestamp(device_name))
+
 
 app = webapp2.WSGIApplication([
-	('/', MainHandler),
-	('/write', CreateRecordHandler),
-	('/read', ReadRecordsHandler)
+	webapp2.Route('/', handler = MainHandler, name = 'home'),
+	webapp2.Route('/write', handler =  CreateRecordHandler, name = 'create-record'),
+	webapp2.Route('/read', handler = ReadRecordsHandler, name = 'read-values'),
+	webapp2.Route('/read-time', handler = ReadRecordsHandlerWithTime, name = 'read-values-with-time')
+
 ], debug=True)
+
+
  
