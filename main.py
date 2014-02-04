@@ -45,10 +45,17 @@ class SensorRecord(ndb.Model) :
 				if not cls.sensorreading in device_readings_dict:
 					device_readings_dict[device_record.recordentrytime] = device_record.sensorreading
 				else:
-					device_readings_dict[device_record.recordentrytime].append(device_record.sensorreading)
-
-				
+					device_readings_dict[device_record.recordentrytime].append(device_record.sensorreading)	
 			return device_readings_dict
+
+	@classmethod
+	def query_latest_reading(cls,device_name):
+		
+		device_records_query = cls.query(
+			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
+			# device_records is a list object only returns sensor reading and time for parsing. 
+		device_record = device_records_query.fetch(1, projection=[cls.sensorreading, cls.recordentrytime])
+		return device_record[0].sensorreading
 
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
@@ -102,12 +109,29 @@ class ReadRecordsHandlerWithTime(webapp2.RequestHandler):
 			self.response.write(
 			SensorRecord.query_readings_by_device_with_timestamp(device_name))
 
+class ReadLatestRecordHandler(webapp2.RequestHandler):
+
+	def get(self): 
+		this = self
+		this.response.headers['Content-Type'] = 'text/plain'
+		
+		try:
+			device_name= self.request.GET['devicename']
+
+		except KeyError: #bail if there is no argument for 'devicename' submitted
+			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
+		else:
+			self.response.write(
+			SensorRecord.query_latest_reading(device_name))
+
+
 
 app = webapp2.WSGIApplication([
 	webapp2.Route('/', handler = MainHandler, name = 'home'),
 	webapp2.Route('/write', handler =  CreateRecordHandler, name = 'create-record'),
 	webapp2.Route('/read', handler = ReadRecordsHandler, name = 'read-values'),
-	webapp2.Route('/read-time', handler = ReadRecordsHandlerWithTime, name = 'read-values-with-time')
+	webapp2.Route('/read-time', handler = ReadRecordsHandlerWithTime, name = 'read-values-with-time'),
+	webapp2.Route('/read-latest', handler = ReadLatestRecordHandler, name = 'read-latest-value')
 
 ], debug=True)
 
