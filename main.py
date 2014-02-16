@@ -2,8 +2,12 @@
 import urllib
 import webapp2
 
+try: import simplejson as json
+except ImportError: import  json
+
 from google.appengine.api import users
 from google.appengine.ext import ndb
+from urlparse import urlparse, parse_qs
 
 NO_DEVICE_NAMED = 'no_device_name'
 
@@ -14,9 +18,7 @@ def device_key(device_name = NO_DEVICE_NAMED):
 
 class SensorRecord(ndb.Model) :
 	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
-	sensormin = ndb.IntegerProperty()
-	sensormax = ndb.IntegerProperty()
-	sensorreading = ndb.IntegerProperty()
+	sensorreading= ndb.JsonProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
 	#note: all class methods pass the instance of the class as it's first argument 
@@ -26,7 +28,7 @@ class SensorRecord(ndb.Model) :
 			device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
-			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
+			device_records = device_records_query.fetch()
 
 		#create methods for pulling different streams of data out for processing. 
 			for device_record in device_records:
@@ -54,7 +56,7 @@ class SensorRecord(ndb.Model) :
 		device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
-		device_record = device_records_query.fetch(1, projection=[cls.sensorreading, cls.recordentrytime])
+		device_record = device_records_query.fetch(1)
 		return device_record[0].sensorreading
 
 class MainHandler(webapp2.RequestHandler):
@@ -65,17 +67,17 @@ class MainHandler(webapp2.RequestHandler):
 class CreateRecordHandler(webapp2.RequestHandler):
     
     def get(self):
+
+    	
     	# populates datastore Model Objects with GET Params and creates Datastore Entity
         self.response.headers['Content-Type'] = 'text/plain'
-
+        #the following request objects are used to collect the arguments from the Query string (everything after the '?')
         device_name = self.request.GET['devicename']
-
-
+        
         r = SensorRecord(parent = device_key(device_name),
-        				sensorreading = int(self.request.GET['sensorreading']),
-        				sensormin = int(self.request.GET['sensormin']),
-        				sensormax = int(self.request.GET['sensormax']))
-        r_key= r.put()
+        				sensorreading = json.dumps(self.request.GET.items()))
+        				
+        r_key = r.put()
 
 
 
