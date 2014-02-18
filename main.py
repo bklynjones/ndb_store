@@ -41,14 +41,10 @@ class SensorRecord(ndb.Model) :
 			device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			
-			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
+			device_records = device_records_query.fetch()
 
-			for device_record in device_records:
-				if not cls.sensorreading in device_readings_dict:
-					device_readings_dict[device_record.recordentrytime] = device_record.sensorreading
-				else:
-					device_readings_dict[device_record.recordentrytime].append(device_record.sensorreading)	
-			return device_readings_dict
+			
+			return device_records
 
 	@classmethod
 	def query_latest_reading(cls,device_name):
@@ -75,7 +71,7 @@ class CreateRecordHandler(webapp2.RequestHandler):
         device_name = self.request.GET['devicename']
         
         r = SensorRecord(parent = device_key(device_name),
-        				sensorreading = json.dumps(self.request.GET.items()))
+        				sensorreading = json.dumps(self.request.GET.items(), separators=(',', ':'), indent = 2 ))
         				
         r_key = r.put()
 
@@ -123,9 +119,29 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
-			self.response.write(
-			SensorRecord.query_latest_reading(device_name))
 
+			reading = SensorRecord.query_latest_reading(device_name)
+			decoded_dict = dict(json.loads(reading))
+
+			#self.response.write(decoded_dict.get('devicename') + '\n')
+			#self.response.write(decoded_dict.get('a0'))
+
+			self.response.write(decoded_dict) #outputs key value dictionary of retrieved datastore entity. 
+
+class PassSensorValueOnly(webapp2.RequestHandler):
+
+	def get(self):
+		self.response.headers['Content-Type'] = 'text/plain'
+
+		try:
+			device_name= self.request.GET['devicename']
+
+		except KeyError: #bail if there is no argument for 'devicename' submitted
+			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
+		else:
+			reading = SensorRecord.query_latest_reading(device_name)
+			decoded_dict = dict(json.loads(reading))
+			self.response.write(decoded_dict.get('a0'))
 
 
 app = webapp2.WSGIApplication([
@@ -133,7 +149,8 @@ app = webapp2.WSGIApplication([
 	webapp2.Route('/write', handler =  CreateRecordHandler, name = 'create-record'),
 	webapp2.Route('/read', handler = ReadRecordsHandler, name = 'read-values'),
 	webapp2.Route('/read-time', handler = ReadRecordsHandlerWithTime, name = 'read-values-with-time'),
-	webapp2.Route('/read-latest', handler = ReadLatestRecordHandler, name = 'read-latest-value')
+	webapp2.Route('/read-latest', handler = ReadLatestRecordHandler, name = 'read-latest-value'),
+	webapp2.Route('/a0', handler = PassSensorValueOnly, name = 'pass-sensor-value-a0')
 
 ], debug=True)
 
