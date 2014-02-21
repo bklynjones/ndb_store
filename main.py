@@ -16,7 +16,7 @@ class SensorRecord(ndb.Model) :
 	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
 	sensormin = ndb.IntegerProperty()
 	sensormax = ndb.IntegerProperty()
-	howsweatyisfletcher = ndb.IntegerProperty()
+	sensorreading = ndb.IntegerProperty()
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
 	#note: all class methods pass the instance of the class as it's first argument 
@@ -26,11 +26,11 @@ class SensorRecord(ndb.Model) :
 			device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
-			device_records = device_records_query.fetch( projection=[cls.howsweatyisfletcher, cls.recordentrytime])
+			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
 
 		#create methods for pulling different streams of data out for processing. 
 			for device_record in device_records:
-				device_readings_list.append(device_record.howsweatyisfletcher)
+				device_readings_list.append(device_record.sensorreading)
 			return device_readings_list
 
 	@classmethod
@@ -39,13 +39,13 @@ class SensorRecord(ndb.Model) :
 			device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			
-			device_records = device_records_query.fetch( projection=[cls.howsweatyisfletcher, cls.recordentrytime])
+			device_records = device_records_query.fetch( projection=[cls.sensorreading, cls.recordentrytime])
 
 			for device_record in device_records:
-				if not cls.howsweatyisfletcher in device_readings_dict:
-					device_readings_dict[device_record.recordentrytime] = device_record.howsweatyisfletcher
+				if not cls.sensorreading in device_readings_dict:
+					device_readings_dict[device_record.recordentrytime] = device_record.sensorreading
 				else:
-					device_readings_dict[device_record.recordentrytime].append(device_record.howsweatyisfletcher)	
+					device_readings_dict[device_record.recordentrytime].append(device_record.sensorreading)	
 			return device_readings_dict
 
 	@classmethod
@@ -54,8 +54,8 @@ class SensorRecord(ndb.Model) :
 		device_records_query = cls.query(
 			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
-		device_record = device_records_query.fetch(1, projection=[cls.howsweatyisfletcher, cls.recordentrytime])
-		return device_record[0].howsweatyisfletcher
+		device_record = device_records_query.fetch(1, projection=[cls.sensorreading, cls.recordentrytime])
+		return device_record[0].sensorreading
 
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
@@ -72,7 +72,7 @@ class CreateRecordHandler(webapp2.RequestHandler):
 
 
         r = SensorRecord(parent = device_key(device_name),
-        				howsweatyisfletcher = int(self.request.GET['howsweatyisfletcher']),
+        				sensorreading = int(self.request.GET['sensorreading']),
         				sensormin = int(self.request.GET['sensormin']),
         				sensormax = int(self.request.GET['sensormax']))
         r_key= r.put()
