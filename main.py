@@ -1,4 +1,3 @@
-#yeah
 
 import urllib
 import webapp2
