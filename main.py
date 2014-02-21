@@ -9,6 +9,7 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 from urlparse import urlparse, parse_qs
 
+
 NO_DEVICE_NAMED = 'no_device_name'
 
 def device_key(device_name = NO_DEVICE_NAMED):
@@ -71,7 +72,7 @@ class CreateRecordHandler(webapp2.RequestHandler):
         device_name = self.request.GET['devicename']
         
         r = SensorRecord(parent = device_key(device_name),
-        				sensorreading = json.dumps(self.request.GET.items(), separators=(',', ':'), indent = 2 ))
+        				sensorreading = json.dumps(self.request.GET.items(), separators=(',', ':')))
         				
         r_key = r.put()
 
@@ -121,12 +122,18 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 		else:
 
 			reading = SensorRecord.query_latest_reading(device_name)
-			decoded_dict = dict(json.loads(reading))
+			
+
 
 			#self.response.write(decoded_dict.get('devicename') + '\n')
 			#self.response.write(decoded_dict.get('a0'))
 
-			self.response.write(decoded_dict) #outputs key value dictionary of retrieved datastore entity. 
+			self.response.write(reading)
+
+		
+			 #outputs key value dictionary of retrieved datastore entity. 
+		
+			
 
 class PassSensorValueOnly(webapp2.RequestHandler):
 
