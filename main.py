@@ -9,6 +9,12 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 from urlparse import urlparse, parse_qs
 
+from datetime import datetime
+
+import ast
+
+from itertools import izip
+
 
 NO_DEVICE_NAMED = 'no_device_name'
 
@@ -19,7 +25,7 @@ def device_key(device_name = NO_DEVICE_NAMED):
 
 class SensorRecord(ndb.Model) :
 	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
-	sensorreading= ndb.JsonProperty()
+	sensorreading= ndb.JsonProperty(indexed = True, compressed = False)
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
 	#note: all class methods pass the instance of the class as it's first argument 
@@ -27,14 +33,12 @@ class SensorRecord(ndb.Model) :
 	def query_readings_by_device(cls,device_name):
 			device_readings_list = []
 			device_records_query = cls.query(
-			ancestor = device_key(device_name)).order(-SensorRecord.recordentrytime)
+			ancestor = device_key(device_name),
+			projection = [SensorRecord.recordentrytime, SensorRecord.sensorreading]).order(-SensorRecord.recordentrytime)
 			# device_records is a list object only returns sensor reading and time for parsing. 
 			device_records = device_records_query.fetch()
+			return device_records
 
-		#create methods for pulling different streams of data out for processing. 
-			for device_record in device_records:
-				device_readings_list.append(device_record.sensorreading)
-			return device_readings_list
 
 	@classmethod
 	def query_readings_by_device_with_timestamp(cls,device_name):
@@ -90,8 +94,40 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
-			self.response.write(
-			SensorRecord.query_readings_by_device(device_name))
+			sensor_readings = SensorRecord.query_readings_by_device(device_name)
+
+			self.response.write('{ "%s":{"readings":'%(device_name))
+			for sensor_reading in sensor_readings:
+				entry_time = sensor_reading.recordentrytime.strftime("%a,%b,%d,%H,%M,%S")
+				sensor_vals = ast.literal_eval(sensor_reading.sensorreading)
+				self.response.write('"%s":'%entry_time)
+		 		for i in range(1, len(sensor_vals)):
+		 			self.response.write('{')
+		 			
+					self.response.write('"%s":'%(sensor_vals[i][0]))
+					self.response.write('"%s"'%(sensor_vals[i][1]))
+					self.response.write('}')
+					if i < (len(sensor_vals)-1):
+						self.response.write(',')
+			self.response.write('}')
+
+
+			# 	self.response.write('"datetime":"%s",{'%(entry_time))
+			# 	for key, value in sensor_vals.iteritems():
+			# 		self.response.write('%s:%s,'%(key, value))
+			# self.response.write(type(sensor_vals))	
+			# self.response.write('}}')
+			#self.response.write(dir(sensor_vals))
+
+
+
+
+
+
+
+
+
+
 
 class ReadRecordsHandlerWithTime(webapp2.RequestHandler):
 
