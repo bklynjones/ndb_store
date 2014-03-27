@@ -96,19 +96,26 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 		else:
 			sensor_readings = SensorRecord.query_readings_by_device(device_name)
 
-			self.response.write('{ "%s":{"readings":'%(device_name))
+			self.response.write('{ "device_group":"%s",'%(device_name))
+			j = 0
 			for sensor_reading in sensor_readings:
-				entry_time = sensor_reading.recordentrytime.strftime("%a,%b,%d,%H,%M,%S")
+				entry_time = sensor_reading.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
+				self.response.write('"reading[%s]":{"datetime" :"%s",'%(str(j),entry_time))
 				sensor_vals = ast.literal_eval(sensor_reading.sensorreading)
-				self.response.write('"%s":'%entry_time)
+				self.response.write('"list":"%s",'%j)
 		 		for i in range(1, len(sensor_vals)):
-		 			self.response.write('{')
-		 			
+		 			#self.response.write('{')
+		 			self.response.write('"outer" :%s ,'%i)
 					self.response.write('"%s":'%(sensor_vals[i][0]))
 					self.response.write('"%s"'%(sensor_vals[i][1]))
-					self.response.write('}')
+					#self.response.write(',')
 					if i < (len(sensor_vals)-1):
 						self.response.write(',')
+					if i ==(len(sensor_vals)-1):
+						self.response.write('}')
+				if j <(len(sensor_readings)-1):
+						self.response.write(',')
+				j+=1
 			self.response.write('}')
 
 
