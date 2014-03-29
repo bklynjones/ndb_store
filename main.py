@@ -9,11 +9,11 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 from urlparse import urlparse, parse_qs
 
-from datetime import datetime
+from datetime import datetime # This is being used to reformat the dateTime record
+import StringIO # This module is for writing strings into memory.  
 
 import ast
 
-from itertools import izip
 
 
 default_device_val = 'no_device_name'
@@ -26,20 +26,55 @@ def device_key(device_name = default_device_val):
 class SensorRecord(ndb.Model) :
 	""" 'sensorreading' accepts an arbitrary number of key/value pairs """
 	# Setting compression to 'False' ensures that the retured property when queried is not a binary
-	sensorreading= ndb.JsonProperty(indexed = True, compressed = False) 
-	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
+	sensorreading= ndb.JsonProperty(
+		indexed = True, 
+		compressed = False) 
+	recordentrytime = ndb.DateTimeProperty(
+		auto_now_add=True)
 
 	#note: all class methods pass the instance of the class as it's first argument 
 	@classmethod
-	def query_readings_by_device(cls,device_name):
-			device_readings_list = []
-			device_records_query = cls.query(
-			ancestor = device_key(device_name),
-			projection = [SensorRecord.recordentrytime, SensorRecord.sensorreading]).order(-SensorRecord.recordentrytime)
-			# device_records is a list object only returns sensor reading and time for parsing. 
+	def query_readings_by_device(cls,device_name,number_of_entries_to_fetch=0):
+		#StringIO creates the String object buffer to store the output. It is 'print()' but to memory instead of the console via the response handler. 
+		json_output = StringIO.StringIO() 
+		device_records_query = cls.query(
+		ancestor = device_key(device_name),
+		projection = [SensorRecord.recordentrytime, SensorRecord.sensorreading]).order(-SensorRecord.recordentrytime)
+		#If the default value is still '0' then the fetch() method is receives no arguement and should return al records
+		if number_of_entries_to_fetch == 0:
 			device_records = device_records_query.fetch()
-			return device_records
+		else:
+			device_records = device_records_query.fetch(number_of_entries_to_fetch)
+		json_output.write('{ "device_group":"%s", "readings":['%(device_name)) 
+		j = 0 # this counter is used to test if the for loop has reached the end of the entries
+		# The following outer for loop iterates through all returned entries
+		for device_record in device_records:
+			entry_time = device_record.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
+			json_output.write('{"datetime" :"%s",'%entry_time)
+			# 'ast.literal_eval' converts the returned sensor readings into a list from a unicode string
+			sensor_vals = ast.literal_eval(device_record.sensorreading)
+			#self.response.write('"list":"%s",'%j) # a counter for debugging so I can check the index
+			#This inner for loop iterates through the key/value pair tuples with the key always at the '[0]' index and the value at '[1]'
+	 		for i in range(1, len(sensor_vals)):
+				json_output.write('"%s":'%(sensor_vals[i][0]))
+				json_output.write('"%s"'%(sensor_vals[i][1]))
+				# all the key / value pairs in the list are seperated by a comma. The following if statement prevents a ',' from being output after the last item in the list
+				if i < (len(sensor_vals)-1):
+					json_output.write(',')
+				# Once the end of the list has been reached however, a closing bracket is needed. The following if statement does this
+				if i ==(len(sensor_vals)-1):
+					json_output.write('}')
+				# Same 'no comma at end of list' check as the first one. This one being for seperating the sets of readings. 
+			if j <(len(device_records)-1):
+					json_output.write(',')
+			j+=1
+		json_output.write(']}')
 
+			
+			
+		return json_output.getvalue()
+		#After the output is returned to the function it is discarded from memory when the .close() method is called. 
+		json_output.close() 
 
 	@classmethod
 	def query_readings_by_device_with_timestamp(cls,device_name):
@@ -98,33 +133,11 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE_NAME PARAMETER SUBMITTED')
 		else:
-			sensor_readings = SensorRecord.query_readings_by_device(device_name)
+			device_readings = SensorRecord.query_readings_by_device(device_name,1)
 
-			self.response.write('{ "device_group":"%s", "readings":['%(device_name)) 
-			j = 0 # this counter is used to test if the for loop has reached the end of the entries
-			# The following outer for loop iterates through all returned entries
-			for sensor_reading in sensor_readings:
-				entry_time = sensor_reading.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
-				self.response.write('{"datetime" :"%s",'%entry_time)
-				# 'ast.literal_eval' converts the returned sensor readings into a list from a unicode string
-				sensor_vals = ast.literal_eval(sensor_reading.sensorreading)
-				#self.response.write('"list":"%s",'%j) # a counter for debugging so I can check the index
-				#This inner for loop iterates through the key/value pair tuples with the key always at the '[0]' index and the value at '[1]'
-		 		for i in range(1, len(sensor_vals)):
-					self.response.write('"%s":'%(sensor_vals[i][0]))
-					self.response.write('"%s"'%(sensor_vals[i][1]))
-					# all the key / value pairs in the list are seperated by a comma. The following if statement prevents a ',' from being output after the last item in the list
-					if i < (len(sensor_vals)-1):
-						self.response.write(',')
-					# Once the end of the list has been reached however, a closing bracket is needed. The following if statement does this
-					if i ==(len(sensor_vals)-1):
-						self.response.write('}')
-					# Same 'no comma at end of list' check as the first one. This one being for seperating the sets of readings. 
-				if j <(len(sensor_readings)-1):
-						self.response.write(',')
-				j+=1
-			self.response.write(']}')
+			self.response.write(device_readings)
 
+			
 
 
 class ReadRecordsHandlerWithTime(webapp2.RequestHandler):
