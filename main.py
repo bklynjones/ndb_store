@@ -16,16 +16,17 @@ import ast
 from itertools import izip
 
 
-NO_DEVICE_NAMED = 'no_device_name'
+default_device_val = 'no_device_name'
 
-def device_key(device_name = NO_DEVICE_NAMED):
+def device_key(device_name = default_device_val):
 	"""constructs Datastore key for SensorRecord entity with device_name """
 	return ndb.Key('DeviceGroup', device_name)
 
 
 class SensorRecord(ndb.Model) :
-	"""Models a single PinRead from an Arduino with record creation time,  sensor min/max, and Device name"""
-	sensorreading= ndb.JsonProperty(indexed = True, compressed = False)
+	""" 'sensorreading' accepts an arbitrary number of key/value pairs """
+	# Setting compression to 'False' ensures that the retured property when queried is not a binary
+	sensorreading= ndb.JsonProperty(indexed = True, compressed = False) 
 	recordentrytime = ndb.DateTimeProperty(auto_now_add=True)
 
 	#note: all class methods pass the instance of the class as it's first argument 
@@ -84,6 +85,9 @@ class CreateRecordHandler(webapp2.RequestHandler):
 
 class ReadRecordsHandler(webapp2.RequestHandler):
 
+	#This handler returns all of the records for the device name submitted via the GET query parameter 'devicename'
+	#The nested for loops in this handler format the returned datastore entities into a JSON object. 
+
 	def get(self): 
 		this = self
 		this.response.headers['Content-Type'] = 'text/plain'
@@ -92,47 +96,34 @@ class ReadRecordsHandler(webapp2.RequestHandler):
 			device_name= self.request.GET['devicename']
 
 		except KeyError: #bail if there is no argument for 'devicename' submitted
-			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
+			self.response.write ('NO DEVICE_NAME PARAMETER SUBMITTED')
 		else:
 			sensor_readings = SensorRecord.query_readings_by_device(device_name)
 
-			self.response.write('{ "device_group":"%s",'%(device_name))
-			j = 0
+			self.response.write('{ "device_group":"%s", "readings":['%(device_name)) 
+			j = 0 # this counter is used to test if the for loop has reached the end of the entries
+			# The following outer for loop iterates through all returned entries
 			for sensor_reading in sensor_readings:
 				entry_time = sensor_reading.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
-				self.response.write('"reading[%s]":{"datetime" :"%s",'%(str(j),entry_time))
+				self.response.write('{"datetime" :"%s",'%entry_time)
+				# 'ast.literal_eval' converts the returned sensor readings into a list from a unicode string
 				sensor_vals = ast.literal_eval(sensor_reading.sensorreading)
-				self.response.write('"list":"%s",'%j)
+				#self.response.write('"list":"%s",'%j) # a counter for debugging so I can check the index
+				#This inner for loop iterates through the key/value pair tuples with the key always at the '[0]' index and the value at '[1]'
 		 		for i in range(1, len(sensor_vals)):
-		 			#self.response.write('{')
-		 			self.response.write('"outer" :%s ,'%i)
 					self.response.write('"%s":'%(sensor_vals[i][0]))
 					self.response.write('"%s"'%(sensor_vals[i][1]))
-					#self.response.write(',')
+					# all the key / value pairs in the list are seperated by a comma. The following if statement prevents a ',' from being output after the last item in the list
 					if i < (len(sensor_vals)-1):
 						self.response.write(',')
+					# Once the end of the list has been reached however, a closing bracket is needed. The following if statement does this
 					if i ==(len(sensor_vals)-1):
 						self.response.write('}')
+					# Same 'no comma at end of list' check as the first one. This one being for seperating the sets of readings. 
 				if j <(len(sensor_readings)-1):
 						self.response.write(',')
 				j+=1
-			self.response.write('}')
-
-
-			# 	self.response.write('"datetime":"%s",{'%(entry_time))
-			# 	for key, value in sensor_vals.iteritems():
-			# 		self.response.write('%s:%s,'%(key, value))
-			# self.response.write(type(sensor_vals))	
-			# self.response.write('}}')
-			#self.response.write(dir(sensor_vals))
-
-
-
-
-
-
-
-
+			self.response.write(']}')
 
 
 
@@ -165,11 +156,7 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 		else:
 
 			reading = SensorRecord.query_latest_reading(device_name)
-			
 
-
-			#self.response.write(decoded_dict.get('devicename') + '\n')
-			#self.response.write(decoded_dict.get('a0'))
 
 			self.response.write(reading)
 
