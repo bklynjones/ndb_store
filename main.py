@@ -19,11 +19,11 @@ import ast
 default_device_val = 'no_device_name'
 
 def device_key(device_name = default_device_val):
-	"""constructs Datastore key for DeviceRecord entity with device_name """
+	"""constructs Datastore key for SensorRecord entity with device_name """
 	return ndb.Key('DeviceGroup', device_name)
 
 
-class DeviceRecord(ndb.Model) :
+class SensorRecord(ndb.Model) :
 	""" 'sensorreading' accepts an arbitrary number of key/value pairs """
 	# Setting compression to 'False' ensures that the retured property when queried is not a binary
 	sensorreading= ndb.JsonProperty(
@@ -39,13 +39,13 @@ class DeviceRecord(ndb.Model) :
 		json_output = StringIO.StringIO() 
 		device_records_query = cls.query(
 		ancestor = device_key(device_name),
-		projection = [DeviceRecord.recordentrytime, DeviceRecord.sensorreading]).order(-DeviceRecord.recordentrytime)
+		projection = [SensorRecord.recordentrytime, SensorRecord.sensorreading]).order(-SensorRecord.recordentrytime)
 		#If the default value is still '0' then the fetch() method is receives no arguement and should return al records
 		if number_of_entries_to_fetch == 0:
 			device_records = device_records_query.fetch()
 		else:
 			device_records = device_records_query.fetch(number_of_entries_to_fetch)
-		json_output.write('{ "device_group":"%s", "readings":['%(device_name)) 
+		json_output.write('{ "collection":{ "device_group":"%s", "items":['%(device_name)) 
 		j = 0 # this counter is used to test if the for loop has reached the end of the entries
 		# The following outer for loop iterates through all returned entries
 		for device_record in device_records:
@@ -68,7 +68,7 @@ class DeviceRecord(ndb.Model) :
 			if j <(len(device_records)-1):
 					json_output.write(',')
 			j+=1
-		json_output.write(']}')
+		json_output.write(']}}')
 
 			
 			
@@ -79,18 +79,22 @@ class DeviceRecord(ndb.Model) :
 	@classmethod
 	def parse_out_latest_device_timestamp(cls,device_name):
 		#get the latest device record
-		device_record = DeviceRecord.query_readings_by_device(device_name,1)
+		device_record = SensorRecord.query_readings_by_device(device_name,1)
 		#json.load(device_record)
 		# return only the datetime value
 		json_output = json.loads(device_record)
 		# Traversing the JSON:
-		# json_output['readings'] returns
+		# json_output['readings'] returns a list, which is denoted by '[]'
 		# [{u'datetime': u'2014-03-29 23:18:31.484465', u'a1': u'332', u'a0': u'221', u'a3': u'554', u'a2': u'443', u'a5': u'776', u'a4': u'665'}] (ignore the 'u' it is noting that the string is 'unicode')
-		# json_output['readings'][0] <--- this second index of [0] traverses past the '[]' that are wrapping the node being targeted
-		# now the node value can be accessed via key name ['datetime']
+		# json_output['readings'][0] <--- this second index of [0] traverses past the list and into the JSON object '{}' that are wrapping the node being targeted
+		
+		# now the node value can be accessed via key name ['datetime']. It will be returned as a unicode string. 
+		# Next datetime's '.strptime()' method is called, passing the record's datetime value as the first arguement. The second arguement passes the syntax for parsing.  
+		# more information about datetime can be found here: http://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+		
+		return datetime.strptime(json_output['collection']['items'][0]['datetime'],'%Y-%m-%d %H:%M:%S.%f').strftime("%a,%b,%d,%H,%M,%S")
+		
 
-
-		return json_output['readings'][0]['datetime']
 
 class MainHandler(webapp2.RequestHandler):
 	def get(self):
@@ -107,21 +111,21 @@ class CreateRecordHandler(webapp2.RequestHandler):
         #the following request objects are used to collect the arguments from the Query string (everything after the '?')
         device_name = self.request.GET['devicename']
         
-        r = DeviceRecord(parent = device_key(device_name),
+        r = SensorRecord(parent = device_key(device_name),
         				sensorreading = json.dumps(self.request.GET.items(), separators=(',', ':')))
         				
         r_key = r.put()
 
 
 
-class ReadDeviceRecordsHandler(webapp2.RequestHandler):
+class ReadSensorRecordsHandler(webapp2.RequestHandler):
 
 	#This handler returns all of the records for the device name submitted via the GET query parameter 'devicename'
 	#The nested for loops in this handler format the returned datastore entities into a JSON object. 
 
 	def get(self): 
 		this = self
-		this.response.headers['Content-Type'] = 'text/plain'
+		this.response.headers['Content-Type'] = 'application/json'
 		
 		try:
 			device_name= self.request.GET['devicename']
@@ -129,7 +133,7 @@ class ReadDeviceRecordsHandler(webapp2.RequestHandler):
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE_NAME PARAMETER SUBMITTED')
 		else:
-			device_readings = DeviceRecord.query_readings_by_device(device_name)
+			device_readings = SensorRecord.query_readings_by_device(device_name)
 
 			self.response.write(device_readings)
 
@@ -139,7 +143,7 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 
 	def get(self): 
 		this = self
-		this.response.headers['Content-Type'] = 'text/plain'
+		this.response.headers['Content-Type'] = 'application/json'
 		
 		try:
 			device_name= self.request.GET['devicename']
@@ -149,7 +153,7 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
 			# pass the number of records to be returned via the second argument.
-			device_reading =  DeviceRecord.query_readings_by_device(device_name,1)
+			device_reading =  SensorRecord.query_readings_by_device(device_name,1)
 			self.response.write(device_reading)
 
 		
@@ -157,7 +161,7 @@ class ReturnLatestRecordTime(webapp2.RequestHandler):
 
 	def get(self): 
 		this = self
-		this.response.headers['Content-Type'] = 'text/plain'
+		this.response.headers['Content-Type'] = 'application/json'
 		
 		try:
 			device_name= self.request.GET['devicename']
@@ -166,9 +170,9 @@ class ReturnLatestRecordTime(webapp2.RequestHandler):
 		except KeyError: 
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
-			device_reading =  DeviceRecord.query_readings_by_device(device_name,1)
+			device_reading =  SensorRecord.query_readings_by_device(device_name,1)
 			self.response.write(
-			DeviceRecord.parse_out_latest_device_timestamp(device_name))
+			SensorRecord.parse_out_latest_device_timestamp(device_name))
 
 
 class PassSensorValueOnly(webapp2.RequestHandler):
@@ -182,7 +186,7 @@ class PassSensorValueOnly(webapp2.RequestHandler):
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE PARAMETER SUBMITTED')
 		else:
-			reading = DeviceRecord.query_latest_reading(device_name)
+			reading = SensorRecord.query_latest_reading(device_name)
 			decoded_dict = dict(json.loads(reading))
 			self.response.write(decoded_dict.get('a0'))
 
@@ -190,10 +194,10 @@ class PassSensorValueOnly(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
 	webapp2.Route('/', handler = MainHandler, name = 'home'),
 	webapp2.Route('/write', handler =  CreateRecordHandler, name = 'create-record'),
-	webapp2.Route('/read', handler = ReadDeviceRecordsHandler, name = 'read-values'),
-	webapp2.Route('/read-time', handler = ReturnLatestRecordTime, name = 'read-values-with-time'),
-	webapp2.Route('/read-latest', handler = ReadLatestRecordHandler, name = 'read-latest-value'),
-	webapp2.Route('/a0', handler = PassSensorValueOnly, name = 'pass-sensor-value-a0')
+	webapp2.Route('/read', handler = ReadSensorRecordsHandler, name = 'read-values'),
+	webapp2.Route('/read-latest', handler = ReadLatestRecordHandler, name = 'read-latest-record'),
+	webapp2.Route('/read-time', handler = ReturnLatestRecordTime, name = 'read-latest-record-time'),
+	webapp2.Route('/read-sensor-value', handler = PassSensorValueOnly, name = 'pass-sensor-value-a0')
 
 ], debug=True)
 
