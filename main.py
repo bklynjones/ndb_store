@@ -127,12 +127,14 @@ class ReadSensorRecordsHandler(webapp2.RequestHandler):
 	def get(self): 
 		this = self
 		this.response.headers['Content-Type'] = 'application/json'
+		self.response.headers['Access-Control-Allow-Origin'] = '*'
 		
 		try:
 			device_name= self.request.GET['devicename']
 
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE_NAME PARAMETER SUBMITTED')
+			
 		else:
 			device_readings = SensorRecord.query_readings_by_device(device_name)
 
@@ -145,6 +147,7 @@ class ReadLatestRecordHandler(webapp2.RequestHandler):
 	def get(self): 
 		this = self
 		this.response.headers['Content-Type'] = 'application/json'
+		self.response.headers['Access-Control-Allow-Origin'] = '*'
 		
 		try:
 			device_name= self.request.GET['devicename']
@@ -163,6 +166,7 @@ class ReturnLatestRecordTime(webapp2.RequestHandler):
 	def get(self): 
 		this = self
 		this.response.headers['Content-Type'] = 'application/json'
+		self.response.headers['Access-Control-Allow-Origin'] = '*'
 		
 		try:
 			device_name= self.request.GET['devicename']
