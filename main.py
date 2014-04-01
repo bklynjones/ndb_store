@@ -52,7 +52,8 @@ class SensorRecord(ndb.Model) :
 			entry_time = device_record.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
 			json_output.write('{"datetime" :"%s",'%entry_time)
 			# 'ast.literal_eval' converts the returned sensor readings into a list from a unicode string
-			sensor_vals = ast.literal_eval(device_record.sensorreading)
+			#sensor_vals = ast.literal_eval(device_record.sensorreading)
+			sensor_vals = json.loads(device_record.sensorreading)
 			#self.response.write('"list":"%s",'%j) # a counter for debugging so I can check the index
 			#This inner for loop iterates through the key/value pair tuples with the key always at the '[0]' index and the value at '[1]'
 	 		for i in range(1, len(sensor_vals)):
