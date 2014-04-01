@@ -106,7 +106,7 @@ class CreateRecordHandler(webapp2.RequestHandler):
     
     def get(self):
 
-    	
+    	self.response.headers['Access-Control-Allow-Origin'] = '*'
     	# populates datastore Model Objects with GET Params and creates Datastore Entity
         self.response.headers['Content-Type'] = 'text/plain'
         #the following request objects are used to collect the arguments from the Query string (everything after the '?')
