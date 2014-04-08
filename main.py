@@ -12,9 +12,6 @@ from urlparse import urlparse, parse_qs
 from datetime import datetime # This is being used to reformat the dateTime record
 import StringIO # This module is for writing strings into memory.  
 
-import ast
-
-
 
 default_device_val = 'no_device_name'
 
@@ -51,8 +48,9 @@ class SensorRecord(ndb.Model) :
 		for device_record in device_records:
 			entry_time = device_record.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
 			json_output.write('{"datetime" :"%s",'%entry_time)
-			# 'ast.literal_eval' converts the returned sensor readings into a list from a unicode string
-			#sensor_vals = ast.literal_eval(device_record.sensorreading)
+			
+			#repr() converts the record object into a string
+			sensor_vals= repr(device_record)
 			sensor_vals = json.loads(device_record.sensorreading)
 			#self.response.write('"list":"%s",'%j) # a counter for debugging so I can check the index
 			#This inner for loop iterates through the key/value pair tuples with the key always at the '[0]' index and the value at '[1]'
@@ -134,7 +132,7 @@ class ReadSensorRecordsHandler(webapp2.RequestHandler):
 
 		except KeyError: #bail if there is no argument for 'devicename' submitted
 			self.response.write ('NO DEVICE_NAME PARAMETER SUBMITTED')
-			
+
 		else:
 			device_readings = SensorRecord.query_readings_by_device(device_name)
 
