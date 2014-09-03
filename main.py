@@ -20,7 +20,6 @@ def device_key(device_name = default_device_val):
 
 class BlobRecorder(ndb.Model):
     ##This is a 'custom' property that is specifically for referencing Blobstore objects
-    device_name = ndb.StringProperty()
     blob_file_key = ndb.BlobKeyProperty()
     recordentrytime = ndb.DateTimeProperty(
     auto_now_add=True)
@@ -42,12 +41,30 @@ class BlobRecorder(ndb.Model):
           blob_list_records = blob_list_query.fetch()
       else: blob_list_records = blob_list_query.fetch(number_of_entries_to_fetch)
 
+
+      output_buffer.write('{ "collection":{ "device_group":"%s", "items":['%(device_name))
+      j = 0 # this counter is used to test if the for loop has reached the end of the entries
       #Loop through values and format time from UTC to human parsable. 
       for blob_list_record in blob_list_records:
         entry_time = blob_list_record.recordentrytime #.strftime("%a,%b,%d,%H,%M,%S")
         output_buffer.write('{"datetime" :"%s",'%entry_time)
-        output_buffer.write('{"blobfile" :"%s",'%str(blob_list_record.blob_file_key))
 
+        for i in range(1, len(blob_list_records)):
+          output_buffer.write('"blob_file_key" :')
+          output_buffer.write('"%s"'%(blob_list_records[i].blob_file_key))
+          # all the key / value pairs in the list are seperated by a comma. The following if statement prevents a ',' from being output after the last item in the list
+          if i < (len(blob_list_records)-1):
+            output_buffer.write(',')
+            # Once the end of the list has been reached however, a closing bracket is needed. The following if statement does this
+          if i ==(len(blob_list_records)-1):
+            output_buffer.write('}')
+            # Same 'no comma at end of list' check as the first one. This one being for seperating the sets of readings. 
+        if j <(len(blob_list_records)-1):
+          output_buffer.write(',')
+        j+=1
+      output_buffer.write(']}}')
+      #   output_buffer.write('{"blobfile" :"%s"}'%str(blob_list_record.blob_file_key))
+      # output_buffer.write(']}}')
       return output_buffer.getvalue()
       
 
@@ -94,11 +111,11 @@ class ServeHandler(blobstore_handlers.BlobstoreDownloadHandler):
 
 class RetrieveRecordsHandler(webapp2.RequestHandler):
   def get(self):
-
-    this = self
     
+    this = self
+      
     self.response.headers['Access-Control-Allow-Origin'] = '*'
-
+    this.response.headers['Content-Type'] = 'application/json'
     try:
       device_name= self.request.GET['devicename']
 
