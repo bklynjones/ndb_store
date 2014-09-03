@@ -71,6 +71,7 @@ class BlobRecorder(ndb.Model):
 ## for Debug this presents a form for uploading the file.   This POST will be made via node. 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
+      
       upload_url = blobstore.create_upload_url('/upload')
       self.response.out.write('<html><body><form action="%s" method="POST" enctype="multipart/form-data">' % upload_url)
       self.response.out.write("""Upload File: <input type="file" name="file">
