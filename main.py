@@ -71,7 +71,7 @@ class BlobRecorder(ndb.Model):
 ## for Debug this presents a form for uploading the file.   This POST will be made via node. 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
-      
+      self.response.headers.add_header("Access-Control-Allow-Origin", "*")
       upload_url = blobstore.create_upload_url('/upload')
       self.response.out.write('<html><body><form action="%s" method="POST" enctype="multipart/form-data">' % upload_url)
       self.response.out.write("""Upload File: <input type="file" name="file">
@@ -80,9 +80,15 @@ class MainHandler(webapp2.RequestHandler):
 
 ## This upload handler is trigged on POST from MainHandler
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
- 
+    def get(self):
+      upload_url = blobstore.create_upload_url('/upload')
+      self.response.out.write('<html><body><form action="%s" method="POST" enctype="multipart/form-data">' % upload_url)
+      self.response.out.write("""Upload File: <input type="file" name="file">
+        <br><input type="submit" name="submit" value="Submit"><br> 
+        </form></body></html>""")
     def post(self):
 
+      self.response.headers.add_header("Access-Control-Allow-Origin", "*")
    
       # 'file' is file upload field in the form
       upload_files = self.get_uploads('file')  
