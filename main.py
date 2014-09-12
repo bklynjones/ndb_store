@@ -81,7 +81,8 @@ class MainHandler(webapp2.RequestHandler):
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     def get(self):
       upload_url = blobstore.create_upload_url('/upload')
-      self.response.write(upload_url)
+      self.response.headers['route'] = upload_url;
+      ##self.response.write(upload_url)
       self.response.out.write('<html><script>var uploadurl = "%s";</script>'% upload_url)
       self.response.out.write('<body><script<form action="%s" method="POST" enctype="multipart/form-data">' % upload_url)
       self.response.out.write("""Upload File: <input type="file" name="file">
