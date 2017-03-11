@@ -9,29 +9,29 @@ For creating a record of the sensor value via '/write' route
  
 ##### Create datastore entity whose parent is the device.
 ```bash
-http://YOUR_APP_SPOT_URL_HERE/write?devicename=STRING&sensorreading=INT&sensormin=INT&sensormax=INT
+http://<your_appspot_url>/write?devicename=STRING&sensorreading=INT&sensormin=INT&sensormax=INT
 ```
  
 #### Read  
 Retrieving saved sensor values via '/read' route 
 
 ##### Retrieve all values for a sensor
-    ``` http://<your_appspot_address>/read?devicename=<string> ```
+    ``` http://<your_appspot_url>/read?devicename=<string> ```
 
 #### Examples
 
 ##### /write
 ```
-http://YOUR_APP_SPOT_URL_HERE/write?devicename=bluto&sensorreading=244&sensormin=0&sensormax=1024
-http://YOUR_APP_SPOT_URL_HERE/write?devicename=bluto&sensorreading=48&sensormin=0&sensormax=1024
-http://YOUR_APP_SPOT_URL_HERE/write?devicename=bluto&sensorreading=67&sensormin=0&sensormax=1024
-http://YOUR_APP_SPOT_URL_HERE/write?devicename=bluto&sensorreading=5&sensormin=0&sensormax=1024
+http://<your_appspot_url>/write?devicename=bluto&sensorreading=244&sensormin=0&sensormax=1024
+http://<your_appspot_url>/write?devicename=bluto&sensorreading=48&sensormin=0&sensormax=1024
+http://<your_appspot_url>/write?devicename=bluto&sensorreading=67&sensormin=0&sensormax=1024
+http://<your_appspot_url>/write?devicename=bluto&sensorreading=5&sensormin=0&sensormax=1024
 ```
  
 ##### /read 
 ######request
 ```
-http://YOUR_APP_SPOT_URL_HERE/read?devicename=bluto
+http://<your_appspot_url>/read?devicename=bluto
 ``` 
 ###### returns
  ```
@@ -41,7 +41,7 @@ http://YOUR_APP_SPOT_URL_HERE/read?devicename=bluto
 or return a dictionary that uses timestamp as the key 
 ###### request
 ```
-http://YOUR_APP_SPOT_URL_HERE/read-time?devicename=bluto
+http://<your_appspot_url>/read-time?devicename=bluto
 ```
 ###### returns
 ```python
